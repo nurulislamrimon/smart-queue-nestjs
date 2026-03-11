@@ -28,7 +28,11 @@
     "worker",
     "redis"
   ],
-  "author": "",
+  "author": "Nurul Islam Rimon",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/nurulislamrimon/smart-queue-nestjs.git"
+  },
   "license": "MIT",
   "dependencies": {
     "bullmq": "^5.0.0",

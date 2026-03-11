@@ -1,5 +1,13 @@
 # smart-queue-nestjs
 
+[![npm version](https://img.shields.io/npm/v/smart-queue-nestjs.svg)](https://www.npmjs.com/package/smart-queue-nestjs)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![GitHub stars](https://img.shields.io/github/stars/nurulislamrimon/smart-queue-nestjs)](https://github.com/nurulislamrimon/smart-queue-nestjs/stargazers)
+
+**Author:** Nurul Islam Rimon  
+**Repository:** [https://github.com/nurulislamrimon/smart-queue-nestjs](https://github.com/nurulislamrimon/smart-queue-nestjs)  
+**Contributing:** [CONTRIBUTING.md](./CONTRIBUTING.md)
+
 A powerful yet simple BullMQ integration for NestJS applications. Simplify queue management while exposing full BullMQ capabilities.
 
 ## Features
