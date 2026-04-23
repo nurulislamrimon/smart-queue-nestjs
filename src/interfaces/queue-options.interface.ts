@@ -12,6 +12,15 @@ export interface SmartQueueConnectionOptions {
   maxRetriesPerRequest?: number;
   enableOfflineQueue?: boolean;
   retryStrategy?: (times: number) => number | null;
+  tls?: SmartQueueTlsOptions;
+}
+
+export interface SmartQueueTlsOptions {
+  enabled?: boolean;
+  ca?: string;
+  cert?: string;
+  key?: string;
+  rejectUnauthorized?: boolean;
 }
 
 export interface SmartQueueModuleOptions {
@@ -19,6 +28,7 @@ export interface SmartQueueModuleOptions {
   defaultJobOptions?: JobsOptions;
   defaultWorkerOptions?: WorkerOptions;
   enableAutoInject?: boolean;
+  prefix?: string;
 }
 
 export interface SmartQueueOptionsFactory {
@@ -79,6 +89,15 @@ export interface QueueMetrics {
   paused: number;
 }
 
+export interface QueueHealthCheck {
+  isHealthy: boolean;
+  queueName: string;
+  connectionStatus: 'connected' | 'disconnected' | 'error';
+  lastCheck: Date;
+  error?: string;
+  jobCounts: QueueMetrics;
+}
+
 export interface JobEventHandlers {
   completed?: (jobId: string, result: unknown) => void;
   failed?: (jobId: string, error: Error) => void;
@@ -88,8 +107,14 @@ export interface JobEventHandlers {
 }
 
 export interface RetryStrategyOptions {
-  attempts: number;
+  maxAttempts: number;
   backoff?: number | { type: 'exponential' | 'fixed'; delay: number };
+  enabled?: boolean;
+}
+
+export interface BackoffStrategy {
+  type: 'exponential' | 'fixed';
+  delay: number;
 }
 
 export interface RateLimitOptions {
@@ -108,6 +133,43 @@ export interface ProcessorOptions {
   stalledInterval?: number;
 }
 
+export interface DeadLetterQueueOptions {
+  enabled: boolean;
+  maxRetries?: number;
+  queueName?: string;
+}
+
+export interface JobHooks {
+  beforeJob?: (jobId: string, data: unknown) => Promise<unknown> | unknown;
+  afterJob?: (jobId: string, result: unknown) => Promise<void> | void;
+  onJobFailed?: (jobId: string, error: Error) => Promise<void> | void;
+}
+
+export interface JobHandlerOptions {
+  name: string;
+  queue?: string;
+  concurrency?: number;
+  retryStrategy?: RetryStrategyOptions;
+  deadLetterQueue?: DeadLetterQueueOptions;
+  hooks?: JobHooks;
+}
+
+export interface SmartQueueJob<T = unknown> {
+  id: string;
+  name: string;
+  data: T;
+  attemptsMade: number;
+  progress: number | object;
+}
+
+export interface JobLoggerContext {
+  jobId: string;
+  jobName: string;
+  queueName: string;
+  attempt?: number;
+}
+
 export const SMART_QUEUE_MODULE_OPTIONS = 'SMART_QUEUE_MODULE_OPTIONS';
 export const QUEUE_SERVICE_TOKEN = 'QUEUE_SERVICE';
 export const QUEUE_REGISTRY_TOKEN = 'QUEUE_REGISTRY';
+export const QUEUE_HEALTH_INDICATOR = 'QUEUE_HEALTH_INDICATOR';

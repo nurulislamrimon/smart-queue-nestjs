@@ -1,4 +1,4 @@
-import { Injectable, Inject, Logger } from '@nestjs/common';
+import { Injectable, Inject, Logger, OnModuleDestroy } from '@nestjs/common';
 import { Job } from 'bullmq';
 import { BullMQAdapter } from '../adapters/bullmq.adapter';
 import {
@@ -7,22 +7,48 @@ import {
   QueueRepeatOptions,
   QueueMetrics,
   JobEventHandlers,
-  RetryStrategyOptions,
   ProcessorOptions,
+  RetryStrategyOptions,
+  DeadLetterQueueOptions,
+  JobHooks,
   SmartQueueModuleOptions,
   SMART_QUEUE_MODULE_OPTIONS,
+  QueueHealthCheck,
 } from '../interfaces/queue-options.interface';
+import { QueueHealthService } from './queue-health.service';
+import { QueueMetricsService } from './queue-metrics.service';
+
+export interface QueueJob<T = unknown> {
+  id: string;
+  name: string;
+  data: T;
+  progress: number | object;
+}
 
 @Injectable()
-export class QueueService {
+export class QueueService implements OnModuleDestroy {
   private readonly logger = new Logger(QueueService.name);
   private readonly defaultQueueOptions: Partial<SmartQueueModuleOptions>;
 
   constructor(
     private readonly adapter: BullMQAdapter,
-    @Inject(SMART_QUEUE_MODULE_OPTIONS) private readonly moduleOptions?: SmartQueueModuleOptions,
+    private readonly healthService: QueueHealthService,
+    private readonly metricsService: QueueMetricsService,
+    @Inject(SMART_QUEUE_MODULE_OPTIONS) moduleOptions?: SmartQueueModuleOptions,
   ) {
     this.defaultQueueOptions = moduleOptions || {};
+  }
+
+  registerQueue(name: string, options?: Partial<SmartQueueModuleOptions>): void {
+    this.adapter.registerQueue(name, options);
+  }
+
+  registerDeadLetterQueue(queueName: string, options: DeadLetterQueueOptions): void {
+    this.adapter.registerDeadLetterQueue(queueName, options);
+  }
+
+  registerJobHooks(queueName: string, hooks: JobHooks): void {
+    this.adapter.registerJobHooks(queueName, hooks);
   }
 
   async add<T = unknown>(
@@ -31,9 +57,29 @@ export class QueueService {
     data: T,
     options?: QueueAddOptions<T>,
   ): Promise<Job> {
-    const job = await this.adapter.addJob<T>(queueName, name, data, options as QueueAddOptions<T>);
-    this.logger.log(`Job added to queue '${queueName}': ${name}`);
-    return job;
+    return this.adapter.addJob<T>(queueName, name, data, options as QueueAddOptions<T>);
+  }
+
+  async addWithIdempotencyKey<T = unknown>(
+    queueName: string,
+    name: string,
+    data: T,
+    idempotencyKey: string,
+    options?: QueueAddOptions<T>,
+  ): Promise<Job> {
+    const existingJob = await this.adapter.getJob(queueName, idempotencyKey);
+
+    if (existingJob) {
+      this.logger.warn(
+        `Job with idempotency key '${idempotencyKey}' already exists. Returning existing job.`,
+      );
+      return existingJob;
+    }
+
+    return this.adapter.addJob<T>(queueName, name, data, {
+      ...options,
+      jobId: idempotencyKey,
+    } as QueueAddOptions<T>);
   }
 
   async delay<T = unknown>(
@@ -64,8 +110,8 @@ export class QueueService {
     return this.adapter.getJob(queueName, jobId);
   }
 
-  async getMetrics(queueName: string): Promise<QueueMetrics> {
-    return this.adapter.getMetrics(queueName);
+  async getQueueMetrics(queueName: string): Promise<QueueMetrics> {
+    return this.adapter.getQueueMetrics(queueName);
   }
 
   async pause(queueName: string): Promise<void> {
@@ -110,7 +156,7 @@ export class QueueService {
     handler: (...args: unknown[]) => void,
   ): void {
     const handlers: JobEventHandlers = {};
-    
+
     switch (event) {
       case 'completed':
         handlers.completed = handler as (jobId: string, result: unknown) => void;
@@ -128,11 +174,31 @@ export class QueueService {
         handlers.stalled = handler as (jobId: string) => void;
         break;
     }
-    
+
     this.adapter.registerEventListeners(queueName, handlers);
+  }
+
+  async checkHealth(queueName: string): Promise<QueueHealthCheck> {
+    return this.healthService.checkQueueHealth(queueName);
+  }
+
+  async checkAllHealth(): Promise<Map<string, QueueHealthCheck>> {
+    return this.healthService.checkAllQueuesHealth();
+  }
+
+  async isHealthy(queueName: string): Promise<boolean> {
+    return this.healthService.isHealthy(queueName);
+  }
+
+  getMetrics(): string {
+    return this.metricsService.getPrometheusMetrics();
   }
 
   async close(queueName: string): Promise<void> {
     await this.adapter.closeQueue(queueName);
+  }
+
+  async onModuleDestroy(): Promise<void> {
+    await this.adapter.onModuleDestroy();
   }
 }

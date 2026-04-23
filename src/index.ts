@@ -1,11 +1,20 @@
 export * from './interfaces/queue-options.interface';
 export * from './decorators/queue.decorator';
+export * from './decorators/queue.interface';
 export * from './core/queue-registry';
 export * from './adapters/bullmq.adapter';
 export * from './services/queue.service';
+export * from './services/queue-metrics.service';
+export * from './services/queue-health.service';
+export * from './services/processor-scanner.service';
 export * from './module/smart-queue.module';
+export * from './module/bull-board.module';
 
 export { SmartQueueModule } from './module/smart-queue.module';
 export { QueueService } from './services/queue.service';
 export { QueueRegistry } from './core/queue-registry';
 export { BullMQAdapter } from './adapters/bullmq.adapter';
+export { QueueMetricsService } from './services/queue-metrics.service';
+export { QueueHealthService } from './services/queue-health.service';
+export { ProcessorScannerService } from './services/processor-scanner.service';
+export { BullBoardModule } from './module/bull-board.module';
