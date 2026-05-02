@@ -11,18 +11,10 @@ export interface QueueMetricsData {
   averageWaitTime: number;
 }
 
-export interface WorkerMetrics {
-  jobsProcessed: number;
-  jobsSucceeded: number;
-  jobsFailed: number;
-  durations: number[];
-}
-
 @Injectable()
 export class QueueMetricsService {
   private readonly logger = new Logger(QueueMetricsService.name);
   private readonly queueMetrics: Map<string, QueueMetricsData> = new Map();
-  private readonly workerMetrics: Map<string, WorkerMetrics> = new Map();
 
   private static readonly METRIC_NAMES = {
     JOBS_CREATED: 'smart_queue_jobs_created_total',
@@ -105,7 +97,6 @@ export class QueueMetricsService {
 
   resetAllMetrics(): void {
     this.queueMetrics.clear();
-    this.workerMetrics.clear();
     this.logger.log('All metrics reset');
   }
 
@@ -148,22 +139,6 @@ export class QueueMetricsService {
         averageWaitTime: 0,
       };
       this.queueMetrics.set(queueName, metrics);
-    }
-
-    return metrics;
-  }
-
-  private getOrCreateWorkerMetrics(workerId: string): WorkerMetrics {
-    let metrics = this.workerMetrics.get(workerId);
-
-    if (!metrics) {
-      metrics = {
-        jobsProcessed: 0,
-        jobsSucceeded: 0,
-        jobsFailed: 0,
-        durations: [],
-      };
-      this.workerMetrics.set(workerId, metrics);
     }
 
     return metrics;

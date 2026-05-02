@@ -8,12 +8,12 @@ import {
   OnModuleDestroy,
   Logger,
 } from '@nestjs/common';
-import { MiddlewareBuilder } from '@nestjs/core';
 import { QueueRegistry } from '../core/queue-registry';
 import { BullMQAdapter } from '../adapters/bullmq.adapter';
 import { QueueService } from '../services/queue.service';
 import { QueueMetricsService } from '../services/queue-metrics.service';
 import { QueueHealthService } from '../services/queue-health.service';
+import { ProcessorScannerService } from '../services/processor-scanner.service';
 import {
   SmartQueueModuleOptions,
   SmartQueueModuleAsyncOptions,
@@ -105,8 +105,18 @@ export class SmartQueueModule implements NestModule, OnModuleDestroy {
         },
         inject: [SMART_QUEUE_MODULE_OPTIONS],
       },
-      BullMQAdapter,
+      {
+        provide: BullMQAdapter,
+        useFactory: (registry: QueueRegistry, metrics: QueueMetricsService) => {
+          if (!registry) {
+            throw new Error('QueueRegistry is not available. Ensure SmartQueueModule.forRoot() is called before using queues.');
+          }
+          return new BullMQAdapter(registry, metrics);
+        },
+        inject: [QueueRegistry, QueueMetricsService],
+      },
       QueueHealthService,
+      ProcessorScannerService,
       {
         provide: QueueService,
         useFactory: (
@@ -148,8 +158,18 @@ export class SmartQueueModule implements NestModule, OnModuleDestroy {
         },
         inject: [SMART_QUEUE_MODULE_OPTIONS, QueueMetricsService],
       },
-      BullMQAdapter,
+      {
+        provide: BullMQAdapter,
+        useFactory: (registry: QueueRegistry, metrics: QueueMetricsService) => {
+          if (!registry) {
+            throw new Error('QueueRegistry is not available. Ensure SmartQueueModule.forRoot() is called before using queues.');
+          }
+          return new BullMQAdapter(registry, metrics);
+        },
+        inject: [QueueRegistry, QueueMetricsService],
+      },
       QueueHealthService,
+      ProcessorScannerService,
       {
         provide: QueueService,
         useFactory: (

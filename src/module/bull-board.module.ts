@@ -1,5 +1,6 @@
-import { DynamicModule, Module, OnModuleInit } from '@nestjs/common';
+import { DynamicModule, Module, OnModuleInit, Inject, Optional } from '@nestjs/common';
 import { QueueRegistry } from '../core/queue-registry';
+import { Queue } from 'bullmq';
 
 export interface BullBoardOptions {
   routePath?: string;
@@ -8,7 +9,7 @@ export interface BullBoardOptions {
 
 @Module({})
 export class BullBoardModule implements OnModuleInit {
-  private queueRegistry: QueueRegistry;
+  private readonly queueRegistry?: QueueRegistry;
 
   static forRoot(options?: BullBoardOptions): DynamicModule {
     return {
@@ -18,20 +19,38 @@ export class BullBoardModule implements OnModuleInit {
           provide: 'BULL_BOARD_OPTIONS',
           useValue: options || {},
         },
+        {
+          provide: BullBoardModule,
+          useFactory: (registry?: QueueRegistry) => {
+            return new BullBoardModule(registry);
+          },
+          inject: [QueueRegistry],
+        },
       ],
       imports: [],
-      exports: [],
+      exports: [BullBoardModule],
     };
   }
 
-  constructor(queueRegistry: QueueRegistry) {
+  constructor(@Optional() @Inject(QueueRegistry) queueRegistry?: QueueRegistry) {
     this.queueRegistry = queueRegistry;
   }
 
-  async onModuleInit(): Promise<void> {}
+  async onModuleInit(): Promise<void> {
+    if (!this.queueRegistry) {
+      throw new Error(
+        'BullBoardModule requires QueueRegistry. Ensure SmartQueueModule.forRoot() is called before BullBoardModule.forRoot().',
+      );
+    }
+  }
 
-  static getQueues(queueRegistry: QueueRegistry): any[] {
-    const queues: any[] = [];
+  static getQueues(queueRegistry?: QueueRegistry): Queue[] {
+    const queues: Queue[] = [];
+
+    if (!queueRegistry) {
+      return queues;
+    }
+
     const registeredQueueNames = queueRegistry.getRegisteredQueueNames();
 
     for (const name of registeredQueueNames) {

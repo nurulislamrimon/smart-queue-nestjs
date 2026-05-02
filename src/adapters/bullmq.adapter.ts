@@ -196,6 +196,11 @@ export class BullMQAdapter implements OnModuleDestroy {
     processor: (job: { id: string; data: T }) => Promise<unknown>,
     options?: ProcessorOptions & { retryStrategy?: any },
   ): void {
+    if (!this.registry) {
+      throw new Error(
+        'QueueRegistry is not available in BullMQAdapter. Ensure SmartQueueModule.forRoot() is properly configured.',
+      );
+    }
     this.registry.createWorker<T>(queueName, processor, options);
   }
 

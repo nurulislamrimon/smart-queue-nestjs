@@ -226,16 +226,9 @@ interface QueueMetricsData {
     averageDuration: number;
     averageWaitTime: number;
 }
-interface WorkerMetrics {
-    jobsProcessed: number;
-    jobsSucceeded: number;
-    jobsFailed: number;
-    durations: number[];
-}
 declare class QueueMetricsService {
     private readonly logger;
     private readonly queueMetrics;
-    private readonly workerMetrics;
     private static readonly METRIC_NAMES;
     recordJobCreated(queueName: string): void;
     recordJobCompleted(queueName: string, durationMs: number): void;
@@ -249,7 +242,6 @@ declare class QueueMetricsService {
     resetAllMetrics(): void;
     getPrometheusMetrics(): string;
     private getOrCreateQueueMetrics;
-    private getOrCreateWorkerMetrics;
 }
 
 declare class QueueRegistry implements OnModuleDestroy, OnModuleInit {
@@ -418,11 +410,11 @@ interface BullBoardOptions {
     apiRoute?: string;
 }
 declare class BullBoardModule implements OnModuleInit {
-    private queueRegistry;
+    private readonly queueRegistry?;
     static forRoot(options?: BullBoardOptions): DynamicModule;
-    constructor(queueRegistry: QueueRegistry);
+    constructor(queueRegistry?: QueueRegistry);
     onModuleInit(): Promise<void>;
-    static getQueues(queueRegistry: QueueRegistry): any[];
+    static getQueues(queueRegistry?: QueueRegistry): Queue$1[];
 }
 
-export { type BackoffStrategy, BullBoardModule, type BullBoardOptions, BullMQAdapter, type DeadLetterQueueOptions, type JobEventHandlers, type JobHandlerOptions, type JobHooks, type JobLoggerContext, PROCESSOR_METADATA_KEY, Processor, type ProcessorMetadata, type ProcessorOptions, ProcessorScannerService, QUEUE_HANDLER_METADATA_KEY, QUEUE_HEALTH_INDICATOR, QUEUE_METADATA_KEY, QUEUE_REGISTRY_TOKEN, QUEUE_SERVICE_TOKEN, Queue, type QueueAddOptions, type QueueDelayOptions, QueueHandler, type QueueHandlerMetadata, type QueueHealthCheck, QueueHealthService, type QueueJob, type QueueMetadata, type QueueMetrics, type QueueMetricsData, QueueMetricsService, QueueRegistry, type QueueRepeatOptions, QueueService, type RateLimitOptions, type RetryStrategyOptions, SMART_QUEUE_MODULE_OPTIONS, type SmartQueueConnectionOptions, type SmartQueueJob, SmartQueueModule, type SmartQueueModuleAsyncOptions, type SmartQueueModuleConfig, type SmartQueueModuleOptions, type SmartQueueOptionsFactory, type SmartQueueTlsOptions, type WorkerMetrics, getProcessorMetadata, getQueueHandlerMetadata, getQueueMetadata };
+export { type BackoffStrategy, BullBoardModule, type BullBoardOptions, BullMQAdapter, type DeadLetterQueueOptions, type JobEventHandlers, type JobHandlerOptions, type JobHooks, type JobLoggerContext, PROCESSOR_METADATA_KEY, Processor, type ProcessorMetadata, type ProcessorOptions, ProcessorScannerService, QUEUE_HANDLER_METADATA_KEY, QUEUE_HEALTH_INDICATOR, QUEUE_METADATA_KEY, QUEUE_REGISTRY_TOKEN, QUEUE_SERVICE_TOKEN, Queue, type QueueAddOptions, type QueueDelayOptions, QueueHandler, type QueueHandlerMetadata, type QueueHealthCheck, QueueHealthService, type QueueJob, type QueueMetadata, type QueueMetrics, type QueueMetricsData, QueueMetricsService, QueueRegistry, type QueueRepeatOptions, QueueService, type RateLimitOptions, type RetryStrategyOptions, SMART_QUEUE_MODULE_OPTIONS, type SmartQueueConnectionOptions, type SmartQueueJob, SmartQueueModule, type SmartQueueModuleAsyncOptions, type SmartQueueModuleConfig, type SmartQueueModuleOptions, type SmartQueueOptionsFactory, type SmartQueueTlsOptions, getProcessorMetadata, getQueueHandlerMetadata, getQueueMetadata };

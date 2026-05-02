@@ -2,6 +2,14 @@
 
 Thank you for your interest in contributing to smart-queue-nestjs!
 
+## Production-Ready Status
+
+This library is production-ready (v1.3.0+) with:
+- Robust NestJS dependency injection (no undefined registry issues)
+- Defensive error handling with clear messages
+- Auto-registration of `ProcessorScannerService`
+- Proper `BullBoardModule` integration
+
 ## Ways to Contribute
 
 - **Bug Reports** - Report bugs by opening an issue
@@ -23,8 +31,11 @@ npm install
 # Build the library
 npm run build
 
-# Run tests (when available)
+# Run tests
 npm test
+
+# Run tests with coverage
+npm run test:cov
 ```
 
 ## Code Style
@@ -33,6 +44,7 @@ npm test
 - Follow existing code conventions
 - Add types for all function parameters and return values
 - Keep functions small and focused
+- Ensure all providers use explicit DI (avoid bare class providers)
 
 ## Pull Request Process
 
@@ -40,9 +52,10 @@ npm test
 2. Create a feature branch (`git checkout -b feature/amazing-feature`)
 3. Make your changes
 4. Run `npm run build` to ensure no build errors
-5. Commit your changes (`git commit -m 'Add amazing feature'`)
-6. Push to the branch (`git push origin feature/amazing-feature`)
-7. Open a Pull Request
+5. Run `npm test` to ensure all tests pass
+6. Commit your changes (`git commit -m 'Add amazing feature'`)
+7. Push to the branch (`git push origin feature/amazing-feature`)
+8. Open a Pull Request
 
 ## Commit Message Guidelines
 
@@ -62,6 +75,5 @@ npm test
 By contributing, you agree that your contributions will be licensed under the MIT License.
 
 ---
-
 **Author:** Nurul Islam Rimon  
 **Repository:** https://github.com/nurulislamrimon/smart-queue-nestjs

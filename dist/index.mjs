@@ -1,4 +1,4 @@
-import { Injectable, Inject, Global, Module, SetMetadata, Logger } from '@nestjs/common';
+import { Injectable, Inject, Global, Module, Optional, Logger, SetMetadata } from '@nestjs/common';
 import { Queue as Queue$1, QueueEvents, Worker } from 'bullmq';
 
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -139,6 +139,11 @@ var QueueRegistry = class {
     return this.jobHooks.get(prefixedName);
   }
   createWorker(name, processor, options) {
+    if (!this.isInitialized) {
+      throw new Error(
+        `QueueRegistry is not initialized. Ensure SmartQueueModule.forRoot() has been called and the module has been initialized before creating workers for queue: ${name}`
+      );
+    }
     const queueName = this.getPrefixedQueueName(name);
     const workerKey = `${queueName}-${options?.concurrency || 1}`;
     if (this.workers.has(workerKey)) {
@@ -492,6 +497,11 @@ var BullMQAdapter = class {
     return jobs;
   }
   createWorker(queueName, processor, options) {
+    if (!this.registry) {
+      throw new Error(
+        "QueueRegistry is not available in BullMQAdapter. Ensure SmartQueueModule.forRoot() is properly configured."
+      );
+    }
     this.registry.createWorker(queueName, processor, options);
   }
   registerEventListeners(queueName, handlers) {
@@ -643,7 +653,6 @@ var QueueMetricsService = class {
   constructor() {
     this.logger = new Logger(QueueMetricsService.name);
     this.queueMetrics = /* @__PURE__ */ new Map();
-    this.workerMetrics = /* @__PURE__ */ new Map();
   }
   recordJobCreated(queueName) {
     const metrics = this.getOrCreateQueueMetrics(queueName);
@@ -704,7 +713,6 @@ var QueueMetricsService = class {
   }
   resetAllMetrics() {
     this.queueMetrics.clear();
-    this.workerMetrics.clear();
     this.logger.log("All metrics reset");
   }
   getPrometheusMetrics() {
@@ -738,19 +746,6 @@ var QueueMetricsService = class {
         averageWaitTime: 0
       };
       this.queueMetrics.set(queueName, metrics);
-    }
-    return metrics;
-  }
-  getOrCreateWorkerMetrics(workerId) {
-    let metrics = this.workerMetrics.get(workerId);
-    if (!metrics) {
-      metrics = {
-        jobsProcessed: 0,
-        jobsSucceeded: 0,
-        jobsFailed: 0,
-        durations: []
-      };
-      this.workerMetrics.set(workerId, metrics);
     }
     return metrics;
   }
@@ -838,7 +833,11 @@ var QueueHealthService = class {
       if (!queue) {
         return "disconnected";
       }
-      const client = await queue.client;
+      const queueClient = queue.client;
+      if (!queueClient) {
+        return "disconnected";
+      }
+      const client = await queueClient;
       await client.ping();
       return "connected";
     } catch (error) {
@@ -1040,8 +1039,18 @@ var SmartQueueModule = class {
         },
         inject: [SMART_QUEUE_MODULE_OPTIONS]
       },
-      BullMQAdapter,
+      {
+        provide: BullMQAdapter,
+        useFactory: (registry, metrics) => {
+          if (!registry) {
+            throw new Error("QueueRegistry is not available. Ensure SmartQueueModule.forRoot() is called before using queues.");
+          }
+          return new BullMQAdapter(registry, metrics);
+        },
+        inject: [QueueRegistry, QueueMetricsService]
+      },
       QueueHealthService,
+      ProcessorScannerService,
       {
         provide: QueueService,
         useFactory: (adapter, healthService, metrics, moduleOptions) => {
@@ -1075,8 +1084,18 @@ var SmartQueueModule = class {
         },
         inject: [SMART_QUEUE_MODULE_OPTIONS, QueueMetricsService]
       },
-      BullMQAdapter,
+      {
+        provide: BullMQAdapter,
+        useFactory: (registry, metrics) => {
+          if (!registry) {
+            throw new Error("QueueRegistry is not available. Ensure SmartQueueModule.forRoot() is called before using queues.");
+          }
+          return new BullMQAdapter(registry, metrics);
+        },
+        inject: [QueueRegistry, QueueMetricsService]
+      },
       QueueHealthService,
+      ProcessorScannerService,
       {
         provide: QueueService,
         useFactory: (adapter, healthService, metrics, moduleOptions) => {
@@ -1104,19 +1123,34 @@ var BullBoardModule = class {
         {
           provide: "BULL_BOARD_OPTIONS",
           useValue: options || {}
+        },
+        {
+          provide: BullBoardModule,
+          useFactory: (registry) => {
+            return new BullBoardModule(registry);
+          },
+          inject: [QueueRegistry]
         }
       ],
       imports: [],
-      exports: []
+      exports: [BullBoardModule]
     };
   }
   constructor(queueRegistry) {
     this.queueRegistry = queueRegistry;
   }
   async onModuleInit() {
+    if (!this.queueRegistry) {
+      throw new Error(
+        "BullBoardModule requires QueueRegistry. Ensure SmartQueueModule.forRoot() is called before BullBoardModule.forRoot()."
+      );
+    }
   }
   static getQueues(queueRegistry) {
     const queues = [];
+    if (!queueRegistry) {
+      return queues;
+    }
     const registeredQueueNames = queueRegistry.getRegisteredQueueNames();
     for (const name of registeredQueueNames) {
       const queue = queueRegistry.getQueue(name);
@@ -1128,7 +1162,9 @@ var BullBoardModule = class {
   }
 };
 BullBoardModule = __decorateClass([
-  Module({})
+  Module({}),
+  __decorateParam(0, Optional()),
+  __decorateParam(0, Inject(QueueRegistry))
 ], BullBoardModule);
 
 export { BullBoardModule, BullMQAdapter, PROCESSOR_METADATA_KEY, Processor, ProcessorScannerService, QUEUE_HANDLER_METADATA_KEY, QUEUE_HEALTH_INDICATOR, QUEUE_METADATA_KEY, QUEUE_REGISTRY_TOKEN, QUEUE_SERVICE_TOKEN, Queue, QueueHandler, QueueHealthService, QueueMetricsService, QueueRegistry, QueueService, SMART_QUEUE_MODULE_OPTIONS, SmartQueueModule, getProcessorMetadata, getQueueHandlerMetadata, getQueueMetadata };

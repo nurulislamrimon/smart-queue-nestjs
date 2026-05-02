@@ -13,6 +13,10 @@
 </p>
 
 <p align="center">
+  Production-ready BullMQ integration for NestJS applications with robust dependency injection
+</p>
+
+<p align="center">
   Enterprise-grade BullMQ integration for NestJS applications with production-ready features
 </p>
 
@@ -521,7 +525,7 @@ Access at `http://localhost:3000/admin/queues`
 
 ## Processor Auto-Discovery
 
-Use decorators to auto-register job handlers:
+Use decorators to auto-register job handlers. The `ProcessorScannerService` is now automatically registered as a provider:
 
 ```typescript
 import { Processor, QueueHandler } from 'smart-queue-nestjs';
@@ -553,32 +557,49 @@ export class OrderProcessor {
 }
 ```
 
-Auto-scan in your app module:
+The scanner is automatically available when using `SmartQueueModule.forRoot()` - just add your processor classes to the module providers:
 
 ```typescript
-import { Module, OnModuleInit } from '@nestjs/common';
-import { NestContainer } from '@nestjs/core';
-import { ProcessorScannerService, SmartQueueModule } from 'smart-queue-nestjs';
+import { Module } from '@nestjs/common';
+import { SmartQueueModule } from 'smart-queue-nestjs';
 
 @Module({
-  imports: [SmartQueueModule.forRoot({ connection: { host: 'localhost' } })],
+  imports: [SmartQueueModule.forRoot({
+    connection: { host: 'localhost', port: 6379 },
+  })],
   providers: [OrderProcessor],
 })
-export class AppModule implements OnModuleInit {
-  constructor(
-    private readonly container: NestContainer,
-    private readonly scanner: ProcessorScannerService,
-  ) {}
-
-  onModuleInit() {
-    const modules = Array.from(this.container.getModules().values());
-    scanner.scanAndRegister(modules);
-  }
-}
+export class AppModule {}
 ```
 
 ---
 
-## License
+## Production Notes
+
+### v1.3.0 - Dependency Injection Fixes
+
+This release fixes critical issues with dependency injection that could cause the `QueueRegistry` to be undefined during worker creation:
+
+- **Fixed:** `BullMQAdapter` now uses explicit `useFactory` with `inject` to guarantee `QueueRegistry` is initialized before use
+- **Added:** Defensive checks with clear error messages if registry is unavailable
+- **Fixed:** `BullBoardModule` now properly injects `QueueRegistry` with `@Optional()` decorator
+- **Added:** `ProcessorScannerService` is now automatically registered as a provider
+- **Fixed:** `QueueHealthService` Redis client access no longer relies on unsafe `any` casts
+
+### Fail-Fast Error Messages
+
+The library now throws clear, actionable errors:
+
+```
+QueueRegistry is not available. Ensure SmartQueueModule.forRoot() is called before using queues.
+```
+
+```
+QueueRegistry is not initialized. Ensure SmartQueueModule.forRoot() has been called and the module has been initialized before creating workers.
+```
+
+---
+
+## License:
 
 MIT

@@ -174,6 +174,12 @@ export class QueueRegistry implements OnModuleDestroy, OnModuleInit {
     processor: (job: { id: string; data: T }) => Promise<unknown>,
     options?: ProcessorOptions & { retryStrategy?: RetryStrategyOptions },
   ): Worker {
+    if (!this.isInitialized) {
+      throw new Error(
+        `QueueRegistry is not initialized. Ensure SmartQueueModule.forRoot() has been called and the module has been initialized before creating workers for queue: ${name}`,
+      );
+    }
+
     const queueName = this.getPrefixedQueueName(name);
     const workerKey = `${queueName}-${options?.concurrency || 1}`;
 

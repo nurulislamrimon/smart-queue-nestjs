@@ -94,7 +94,12 @@ export class QueueHealthService implements OnModuleDestroy {
         return 'disconnected';
       }
 
-      const client = await (queue as any).client;
+      const queueClient = (queue as any).client;
+      if (!queueClient) {
+        return 'disconnected';
+      }
+
+      const client = await queueClient;
       await client.ping();
       return 'connected';
     } catch (error) {
